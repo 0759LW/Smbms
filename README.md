@@ -341,11 +341,12 @@ public class CharacterEncodingFilter implements Filter {
 
 9.测试访问，确保以上功能成功！
 
-这次操作失败地方：SQL保持连接不上，因为前端用的是post，你写的是doget，把post改成get就行了！
+这个小节操作失败地方：1.SQL连接失败，因为propertiea中的url本身就是错的
+
+2.用户输入正确账户密码后网站跳转不上，因为前端用的是post，你写的是doget，把post改成get就行了！
 
 成功效果图
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B%E6%88%90%E5%8A%9F%E6%95%88%E6%9E%9C%E5%9B%BE1.png)
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%88%90%E5%8A%9F%E6%B5%81%E7%A8%8B%E6%95%88%E6%9E%9C%E5%9B%BE2.png)
-
