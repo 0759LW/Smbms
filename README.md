@@ -168,5 +168,177 @@ public class CharacterEncodingFilter implements Filter {
 
 如JS.css.images...
 
+# smbms登录流程实现
 
+登录功能实现
 
+![](https://github.com/0759LW/Smbms/blob/master/images/smbms%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B.png)
+
+1. 编写前端页面
+
+2. 设置首页
+
+   ```xml
+   <!--设置欢迎界面-->
+       <welcome-file-list>
+           <welcome-file>login.jsp</welcome-file>
+       </welcome-file-list>
+   
+   ```
+
+   3.编写dao层登录用户登录的接口
+
+   ```java
+   public interface UserDao {
+       //得到要登录的用户
+       public User getLoginUser(Connection connection,String userCode) throws SQLException;
+   }
+   ```
+
+   4.编写dao接口的实现类
+
+   ```java
+   public class UserDaoImpl implements UserDao{
+    //得到要登陆的用户
+       public User getLoginUser(Connection connection, String userCode) throws SQLException {
+           PreparedStatement pstm=null;
+           ResultSet rs=null;  User user=null;
+   
+           if(connection!=null){
+               String sql="select * from smbms_user where userCode=?";
+               Object[] params={userCode};
+   
+                  rs =  BaseDao.execute(connection,pstm,rs,sql,params);
+                  if(rs.next()){
+                      user =new User();
+                      user.setId(rs.getInt("id"));
+                      user.setUserCode(rs.getString("userCode"));
+                      user.setUserName(rs.getString("userName"));
+                      user.setUserPassword(rs.getString("userPassword"));
+                      user.setGender(rs.getInt("gender"));
+                      user.setBirthday(rs.getDate("birthday"));
+                      user.setPhone(rs.getString("phone"));
+                      user.setAddress(rs.getString("address"));
+                      user.setUserRole(rs.getInt("userRole"));
+                      user.setCreatedBy(rs.getInt("createdBy"));
+                      user.setCreationDate(rs.getTimestamp("creationDate"));
+                      user.setModifyBy(rs.getInt("modifyBy"));
+                      user.setModifyDate(rs.getTimestamp("modifyDate"));
+                  }
+                      BaseDao.closeResource(null,pstm,rs);
+   
+   
+           }
+   
+       return user;
+       }
+   }
+   ```
+
+   业务层跟dao层都是一样的，为了提供用户判断登录是否成功
+
+   5.业务层接口
+
+   ```java
+   public interface  UserService {
+       //用户登录
+       public User login(String userCode,String password);
+   }
+   ```
+
+   6.业务层实现类
+
+   ```java
+   public class UserServiceImpl implements UserService {
+       private UserDao userDao;
+     public UserServiceImpl(){
+         userDao=new UserDaoImpl();
+     }
+       public User login(String userCode, String password) {
+           Connection connection=null;
+           User user=null;
+           try{
+               connection= BaseDao.getConnection();
+               //通过业务层调用对应的具体的数据库操作
+              user= userDao.getLoginUser(connection,userCode);
+           }
+           catch (SQLException e){
+               e.printStackTrace();
+           }finally {
+               BaseDao.closeResource(connection,null,null);
+           }
+        return user;
+   
+       }
+       @Test
+       public  void test(){
+        UserServiceImpl userService= new UserServiceImpl();
+      User admin=  userService.login("admin","1234567");
+           System.out.println(admin.getUserPassword());
+       }
+   //业务层都会调用dao层，所以我们要导入dao层
+   
+   }
+   
+   ```
+
+   7.编写Servlet
+
+   ```java
+   public class LoginServlet extends HttpServlet {
+   
+       //servlet：控制层，调用业务层代码
+   
+       @Override
+       protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+           System.out.println("Loginservlet---start");
+           //获取用户名和密码
+           String userCode=req.getParameter("userCode");
+           String userPassword=req.getParameter("userPassword");
+           //和数据库中的密码作对比，调用业务层
+          UserService userService= new UserServiceImpl();
+       User user = userService.login(userCode,userPassword);//这里已经把登录的人给查出来了
+      if(user!=null){
+          //查有此人，可以登录
+          //讲用户的信息放到session中；
+          req.getSession().setAttribute(Constants.USER_SESSION,user);
+          //跳转到内部主页
+          System.out.println("1");
+          resp.sendRedirect("jsp/frame.jsp");
+   
+          System.out.println("2");
+      }else{
+          //查无此人
+          //转发回登录页面,顺便提示错误
+          req.setAttribute("error","用户名不正确或密码不正确");
+          req.getRequestDispatcher("login.jsp").forward(req,resp);
+          System.out.println("3");
+      }
+       }
+   
+       @Override
+       protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+   
+       }
+   }
+   ```
+
+   8.注册Servlet
+
+   ```xml
+   <!--servlet-->
+       <servlet>
+           <servlet-name>LoginServlet</servlet-name>
+           <servlet-class>com.Lw.servlet.user.LoginServlet</servlet-class>
+       </servlet>
+       <servlet-mapping>
+           <servlet-name>LoginServlet</servlet-name>
+           <url-pattern>/login.do</url-pattern>
+       </servlet-mapping>
+   ```
+
+   
+
+9.测试访问，确保以上功能成功！
+
+这次操作失败地方：SQL保持连接不上，因为前端用的是post，你写的是doget，把post改成get就行了！
