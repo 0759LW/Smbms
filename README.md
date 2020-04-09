@@ -341,7 +341,7 @@ public class CharacterEncodingFilter implements Filter {
 
 9.测试访问，确保以上功能成功！
 
-这个小节操作失败地方：1.SQL连接失败，因为propertiea中的url本身就是错的
+这个小节操作失败地方：1.SQL连接失败，因为properties中的url本身就是错的
 
 2.用户输入正确账户密码后网站跳转不上，因为前端用的是post，你写的是doget，把post改成get就行了！
 
@@ -350,3 +350,98 @@ public class CharacterEncodingFilter implements Filter {
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B%E6%88%90%E5%8A%9F%E6%95%88%E6%9E%9C%E5%9B%BE1.png)
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%88%90%E5%8A%9F%E6%B5%81%E7%A8%8B%E6%95%88%E6%9E%9C%E5%9B%BE2.png)
+
+# 登录功能优化
+
+```java
+public class LogoutServlet  extends HttpServlet {
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+       //移除用户的Constants.USER_SESSION
+        req.getSession().removeAttribute(Constants.USER_SESSION);
+        resp.sendRedirect("/login.jsp");//返回登录页面
+    }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+
+    }
+}
+```
+
+注册xml
+
+```xml
+<servlet>
+    <servlet-name>LogoutServlet</servlet-name>
+    <servlet-class>com.Lw.servlet.user.LogoutServlet</servlet-class>
+    
+</servlet>
+    <servlet-mapping>
+        <servlet-name>LogoutServlet</servlet-name>
+        <url-pattern>/jsp/logout.do</url-pattern>
+    </servlet-mapping>
+```
+
+这个地方会出错退出不了：重定向路劲加上req.getContextPath() +要进的页面
+
+
+
+## 登录拦截优化
+
+编写一个过滤器，并注册
+
+```java
+public class SysFilter implements Filter {
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+
+    }
+
+    @Override
+    public void doFilter(ServletRequest req, ServletResponse resp, FilterChain chain) throws IOException, ServletException {
+      HttpServletRequest request=  (HttpServletRequest)req;
+        HttpServletResponse response=  (HttpServletResponse)resp;
+        //过滤器，从session中获取用户
+      User user=(User) request.getSession().getAttribute(Constants.USER_SESSION);
+    if(user==null){
+        //被移除或者注销了，或者未登录
+        response.sendRedirect("/smbms/error.jsp");
+    }
+    else {
+        chain.doFilter(req,resp);
+    }
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+}
+
+```
+
+```xml
+   <!--用户登录过滤器-->
+    <filter>
+        <filter-name>SysFilter</filter-name>
+        <filter-class>com.Lw.filter.SysFilter</filter-class>
+    </filter>
+    <filter-mapping>
+        <filter-name>>SysFilter</filter-name>
+        <url-pattern>/jsp/*</url-pattern>
+    </filter-mapping>
+```
+
+测试，登录，注销，权限，都要ok！
+
+效果：
+
+注意网站地址
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E9%99%86%E9%A1%B5%E9%9D%A2.png)
+
+这时我们退出登陆界面直接进入页面地址，这时会被拦截
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%8B%A6%E6%88%AA%E9%A1%B5%E9%9D%A2.png)
+
