@@ -445,3 +445,80 @@ public class SysFilter implements Filter {
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%8B%A6%E6%88%AA%E9%A1%B5%E9%9D%A2.png)
 
+# 密码修改
+
+1. 导入前端素材
+
+```java
+<li><a href="${pageContext.request.contextPath }/jsp/pwdmodify.jsp">密码修改</a></li>
+```
+
+2.写项目，建议从底层向上写
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E5%86%99%E9%A1%B9%E7%9B%AE%E5%BB%BA%E8%AE%AE.png)
+
+3.UserDao接口
+
+```java
+public  int updatePwd(Connection connection, int id,String password) throws SQLException;
+
+```
+
+4.UserDao接口实现类
+
+```java
+    //修改该当密码
+    public int updatePwd(Connection connection, int id,String password) throws SQLException {
+        PreparedStatement pstm=null; int execute=0；
+        if(connection!=null){
+            String sql="update smbms_user set userPassword=? where id =?";
+            Object params[]={password,id};
+            execute=   BaseDao.execute(connection,pstm,sql,params);
+            BaseDao.closeResource(null,pstm,null);
+        }
+
+return  execute;
+
+    }
+```
+
+5.UserService层
+
+```java
+//根据用户ID修改密码
+    public  boolean updatePwd( int id, String pwd) ;
+```
+
+6..UserService实现类
+
+```java
+    public boolean updatePwd(int id, String pwd) {
+        Connection connection=null;
+        boolean flag=false;
+         //修改密码
+        try {
+            connection= BaseDao.getConnection();
+            if(userDao.updatePwd(connection,id,pwd)>0){
+           flag=true;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }finally {
+            BaseDao.closeResource(connection,null,null);
+        }
+        return  flag;
+    }
+```
+
+7.Servlet记得实现复用，需要提出取方法
+
+```java
+  @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    String method=  req.getParameter("method");
+    if(method.equals("savepwd")&&method!=null){
+        this.updatePwd(req,resp);
+    }
+```
+
+8.测试
