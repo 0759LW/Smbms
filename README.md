@@ -522,3 +522,90 @@ return  execute;
 ```
 
 8.测试
+
+# 优化密码修改使用Ajax
+
+1.阿里巴巴的fastjson
+
+```xml
+<!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
+<dependency>
+    <groupId>com.alibaba</groupId>
+    <artifactId>fastjson</artifactId>
+    <version>1.2.68</version>
+</dependency>
+
+```
+
+2.后台代码修改
+
+```java
+   //修改密码
+ public  void updatePwd(HttpServletRequest req, HttpServletResponse resp){
+     //从Session里面拿ID;
+     Object o =  req.getSession().getAttribute(Constants.USER_SESSION);
+     String newpassword= req.getParameter("newpassword");//从前端id里
+     boolean flag=false;
+     if(o!=null&& !StringUtils.isNullOrEmpty(newpassword))
+     {
+         UserService userService= new UserServiceImpl();
+          flag= userService.updatePwd(((User)o).getId(),newpassword);
+         if(flag){
+             req.setAttribute("message","修改密码成功，请退出，使用新密码登录");
+             //密码修改成功，移除当前Session
+             req.getSession().removeAttribute(Constants.USER_SESSION);
+         }else {
+             req.setAttribute("message","密码修改失败");
+             //密码修改失败
+         }
+     }else {
+         req.setAttribute("message","新密码有问题");
+
+     }
+     try {
+         req.getRequestDispatcher("pwdmodify.jsp").forward(req,resp);
+     } catch (ServletException e) {
+         e.printStackTrace();
+     } catch (IOException e) {
+         e.printStackTrace();
+     }
+
+ }
+
+//验证旧密码,session中有用户的密码
+    public  void pwdModify(HttpServletRequest req, HttpServletResponse resp){
+        //从Session里面拿ID;
+        Object o =  req.getSession().getAttribute(Constants.USER_SESSION);
+        String oldpassword= req.getParameter("oldpassword");//从前端id里
+        //万能的Map
+        Map<String,String> resultMap= new HashMap<String,String>();
+        if(o==null){//session失效或过期
+       resultMap.put("result","sessionerror");
+        }else if(StringUtils.isNullOrEmpty(oldpassword)) {//输入的密码为空
+            resultMap.put("result","error");
+        }else {
+          String userPassword=  ((User)o).getUserPassword();//session中用户的密码
+        if(oldpassword.equals(userPassword)){
+            resultMap.put("result","true");
+        }else {
+            resultMap.put("result","false");
+        }
+
+        try {
+            resp.setContentType("applcation/json");
+           PrintWriter writer =resp.getWriter();
+           //JSONArray 阿里巴巴的工具类转换格式
+          /*  resultMap =["result","sessionerror","result","error"]
+         转化 Json格式={key:value}
+          */
+           writer.write(JSONArray.toJSONString(resultMap));
+           writer.flush();
+           writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        }
+    }
+```
+
