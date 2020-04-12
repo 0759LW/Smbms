@@ -345,6 +345,8 @@ public class CharacterEncodingFilter implements Filter {
 
 2.用户输入正确账户密码后网站跳转不上，因为前端用的是post，你写的是doget，把post改成get就行了！
 
+//注意，2020年4月11号：一般用post方法，只要在post中再调用doget方法就行，因为post更安全
+
 成功效果图
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E7%99%BB%E5%BD%95%E6%B5%81%E7%A8%8B%E6%88%90%E5%8A%9F%E6%95%88%E6%9E%9C%E5%9B%BE1.png)
@@ -609,3 +611,178 @@ return  execute;
     }
 ```
 
+# 用户管理实现
+
+思路：
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86.png)
+
+1.导入分页的工具类
+
+2.用户列表页面导入
+
+userlist.jsp
+
+## 1 获取用户数量
+
+1.UserDao
+
+```java
+//根据用户名或者角色查询用户总数
+    public  int getUserCount(Connection connection,String username,int userRole)throws SQLException;
+```
+
+
+
+2.UserDaolmpl
+
+```java
+ ////根据用户名或者角色查询用户总数[最难理解的SQL]
+    public int getUserCount(Connection connection, String username, int userRole) throws SQLException {
+         PreparedStatement pstm=null;
+         ResultSet rs=null;
+         int count =0;
+         if (connection!=null){
+             StringBuffer sql=new StringBuffer();
+             sql.append("select count(1) as count from smbms_user u,smbms_role r where u.userRole= r.id");
+            ArrayList<Object> list= new ArrayList<Object>();//存放我们的参数
+             if(!StringUtils.isNullOrEmpty(username)){
+                 sql.append(" and u.userName like ?");
+                 list.add("%"+username+"%");//index:0
+             }
+             if(userRole>0){
+                 sql.append(" and u.userRole=?");
+                 list.add(userRole);//index:1
+             }
+             //怎么把List转化为数组
+             Object[] params=list.toArray();
+     rs =   BaseDao.execute(connection,pstm,rs,sql.toString(),params);
+     if(rs.next()){
+          count=rs.getInt("count");//从结果集中获取最终的数量
+     }
+     BaseDao.closeResource(null,pstm,rs);
+         }
+         return  count;
+    }
+```
+
+
+
+3.UserService
+
+```java
+  //查询记录数
+    public  int getUserCount(String username,int userRole);
+```
+
+
+
+4.UserServicelmpl
+
+```java
+//查询记录数
+    public int getUserCount(String username, int userRole) {
+      Connection connection=null;
+      int count=0;
+      try {
+          connection=  BaseDao.getConnection();
+         count= userDao.getUserCount(connection,username,userRole);
+      } catch (SQLException e) {
+          e.printStackTrace();
+      }finally {
+
+          BaseDao.closeResource(connection,null,null);
+       return count;
+      }
+
+    }
+```
+
+## 2 获取用户列表
+
+1.userdao
+
+```java
+ public List<User> getUserList(Connection connection,String userName,int userRole,int currentPageNo,int pageSize)throws Exception;
+```
+
+
+
+2.userdaoImpl
+
+```java
+ public List<User> getUserList(Connection connection, String userName, int userRole, int currentPageNo, int pageSize) throws Exception {
+   PreparedStatement pstm=null;
+   ResultSet rs=null;
+   List<User> userList=new ArrayList<>();
+   if(connection!=null){
+       StringBuffer sql=new StringBuffer();
+       sql.append("select u.*,r.roleName as userRoleName from smbms_role r where u.userRole=r.id");
+       List<Object> list =new ArrayList<>();
+       if (!StringUtils.isNullOrEmpty(userName)){
+           sql.append(" and u.uerName linke ?");
+           list.add("%"+userName+"%");
+       }
+       if (userRole>0){
+           sql.append(" and u.userRole =?");
+           list.add(userRole);
+       }
+       sql.append(" order by creationDate DESC limit ?,?");
+       currentPageNo=(currentPageNo-1)*pageSize;
+       list.add(currentPageNo);
+       list.add(pageSize);
+
+       Object[] params=list.toArray();
+
+       rs=BaseDao.execute(connection,pstm,rs,sql.toString(),params);
+       while (rs.next()){
+           User _user=new User();
+           _user.setId(rs.getInt("id"));
+           _user.setUserCode(rs.getString("userCode"));
+           _user.setUserName(rs.getString("userName"));
+           _user.setGender(rs.getInt("gender"));
+           _user.setBirthday(rs.getDate("birthday"));
+           _user.setPhone(rs.getString("phone"));
+           _user.setUserRole(rs.getInt("userRole"));
+          _user.setUserRoleName(rs.getString("userRoleName"));
+         userList.add(_user);
+       }
+       BaseDao.closeResource(null,pstm,rs);
+   }
+   return userList;
+    }
+```
+
+3 userservice
+
+```java
+   //根据条件查询用户列表
+    public List<User> getUserList(String queryUserName,int queryUserRole,int currentPageNo,int pageSize);
+```
+
+3 userserviceImpl
+
+```java
+   public List<User> getUserList(String queryUserName, int queryUserRole, int currentPageNo, int pageSize) {
+      Connection connection=null;
+      List<User> userList=null;
+        System.out.println("queryUserName"+queryUserName);
+        System.out.println("queryUserRole"+queryUserRole);
+        System.out.println("currentPageNo"+currentPageNo);
+        System.out.println("pageSize"+pageSize);
+        try{
+            connection=BaseDao.getConnection();
+            userList=userDao.getUserList(connection,queryUserName,queryUserRole,currentPageNo,pageSize);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            BaseDao.closeResource(connection,null,null);
+        }
+        return userList;
+    }
+```
+
+4.回顾三层结构
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E4%B8%89%E5%B1%82%E7%BB%93%E6%9E%84.png)
