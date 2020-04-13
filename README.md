@@ -786,3 +786,155 @@ userlist.jsp
 4.回顾三层结构
 
 ![](https://github.com/0759LW/Smbms/blob/master/images/%E4%B8%89%E5%B1%82%E7%BB%93%E6%9E%84.png)
+
+## 3 获取角色操作
+
+为了我们职责统一，可以把角色的操作单独放在一个包中，和POJO类对应
+
+RoleDao
+
+```java
+public interface RoleDao {
+    public List<Role> getRoleList(Connection connection) throws SQLException;
+}
+```
+
+RoleDaoImpl
+
+```java
+public class RoleDaoImpl implements RoleDao {
+    //获取角色列表
+    public List<Role> getRoleList(Connection connection) throws SQLException {
+        PreparedStatement pstm=null;
+        ResultSet resultSet=null;
+        ArrayList<Role> roleList=new ArrayList<Role>();
+        if (connection != null) {
+            String sql="select * from smbms_role";
+            Object[] params={};
+            resultSet= BaseDao.execute(connection,pstm,resultSet,sql,params);
+            while (resultSet.next()){
+                Role _role=new Role();
+                _role.setId(resultSet.getInt("id"));
+                _role.setRoleCode(resultSet.getString("roleCode"));
+                _role.setRoleName(resultSet.getString("roleName"));
+            }
+            BaseDao.closeResource(null,pstm,resultSet);
+        }
+        return  roleList;
+    }
+}
+```
+
+RoleService
+
+```java
+public interface RoleService {
+    //获取角色列表
+    public List<Role> getRoleList();
+}
+```
+
+RoleServiceImpl
+
+```java
+public class RoleServiceImpl implements RoleService {
+    //引入Dao
+    private RoleDao roleDao;
+
+    public RoleServiceImpl() {
+        roleDao = new RoleDaoImpl();
+    }
+
+    public List<Role> getRoleList() {
+        Connection connection=null;
+        List<Role> roleList=null;
+        try{
+            connection= BaseDao.getConnection();
+            roleList=roleDao.getRoleList(connection);
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }finally {
+            BaseDao.closeResource(connection,null,null);
+        }
+        return roleList;
+    }
+}
+```
+
+# 4 用户显示的SerVlet
+
+1.获取用户前端的数据(查询)
+
+2.判断请求是否需要执行，看参数的值判断
+
+3.为了实现分页，需要计算出当前页面和总页面，页面大小
+
+4.用户列表展示
+
+5.返回前端
+
+```java
+    //重点难点
+    public  void  query(HttpServletRequest req, HttpServletResponse resp){
+            //查询用户列表
+        //从前端获取数据
+        String queryUserName=req.getParameter("queryname");
+        String temp=req.getParameter("queryUserRole");
+        String pageIndex=req.getParameter("pageIndex");
+        int queryUserRole=0;
+        //获取用户列表
+        UserServiceImpl userService=new UserServiceImpl();
+        List<User> userList=null;
+        //第一次走这个请求，一定是第一页，页面大小固定:
+        int pageSize=5;//可以把这个配置到配置文件中，方便后期修改;
+        int currentPageNo=1;
+        if(queryUserName==null){
+            queryUserName="";
+        }
+        if (temp!=null&&!temp.equals("")){
+            queryUserRole=Integer.parseInt(temp);//给查询赋值！0，1，2，3
+        }
+        if (pageIndex!=null){
+            currentPageNo=Integer.parseInt(pageIndex);
+        }
+        //获取用户的总数(分页：上一页，下一页的情况)
+      int totalCount=  userService.getUserCount(queryUserName,queryUserRole);
+
+        //总页数支持
+        PageSupport pageSupport=new PageSupport();
+        pageSupport.setCurrentPageNo(currentPageNo);
+        pageSupport.setPageSize(pageSize);
+        pageSupport.setTotalCount(totalCount);
+        int totalPageCount=((int)(totalCount/pageSize))+1;//总共有多少页
+        //控制首页和尾页
+        if(currentPageNo<1){
+            currentPageNo=1;
+        }else if(currentPageNo>totalCount){
+            currentPageNo=totalCount;
+        }
+        //获取用户列表展示
+        userList=userService.getUserList(queryUserName,queryUserRole,currentPageNo,pageSize);
+       req.setAttribute("userList ",userList);
+        RoleServiceImpl roleService=new RoleServiceImpl();
+        List<Role> roleList=roleService.getRoleList();
+        req.setAttribute("roleList",roleList);
+        req.setAttribute("totalCount",totalCount);
+        req.setAttribute("currentPageNo",currentPageNo);
+        req.setAttribute("totalPageCount",totalPageCount);
+        req.setAttribute("queryUserName",queryUserName);
+        req.setAttribute("queryUserRole",queryUserRole);
+
+        //返回前端
+        try {
+            req.getRequestDispatcher("userlist.jsp").forward(req,resp);
+        } catch (ServletException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+小黄鸭调试法;自言自语；
+
