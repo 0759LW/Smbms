@@ -692,8 +692,9 @@ userlist.jsp
       }finally {
 
           BaseDao.closeResource(connection,null,null);
-       return count;
+       
       }
+        return count;
 
     }
 ```
@@ -717,8 +718,8 @@ userlist.jsp
    List<User> userList=new ArrayList<>();
    if(connection!=null){
        StringBuffer sql=new StringBuffer();
-       sql.append("select u.*,r.roleName as userRoleName from smbms_role r where u.userRole=r.id");
-       List<Object> list =new ArrayList<>();
+       sql.append("select u.*,r.roleName as userRoleName from  smbms_user u,   smbms_role r where u.userRole=r.id");
+       List<Object> list =new ArrayList<Object>();
        if (!StringUtils.isNullOrEmpty(userName)){
            sql.append(" and u.uerName linke ?");
            list.add("%"+userName+"%");
@@ -937,4 +938,8 @@ public class RoleServiceImpl implements RoleService {
 ```
 
 小黄鸭调试法;自言自语；
+
+用户管理 最终效果图
+
+![](https://github.com/0759LW/Smbms/blob/master/images/%E7%94%A8%E6%88%B7%E7%AE%A1%E7%90%86%20%E6%9C%80%E7%BB%88%E6%95%88%E6%9E%9C.png)
 
